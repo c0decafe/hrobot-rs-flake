@@ -23,6 +23,10 @@ nix build github:c0decafe/hrobot-rs-flake#hrobot
 # Run the helper CLI
 nix run github:c0decafe/hrobot-rs-flake -- help
 
+# List ready/running servers
+HROBOT_USERNAME=... HROBOT_PASSWORD=... \
+  nix run github:c0decafe/hrobot-rs-flake -- servers
+
 # Enter the development shell
 nix develop github:c0decafe/hrobot-rs-flake
 
@@ -47,6 +51,13 @@ export HROBOT_PASSWORD='...'
 HROBOT_RS_DIR=~/src/hrobot-rs \
   nix run github:c0decafe/hrobot-rs-flake#hrobot -- live-api-tests
 ```
+
+For Robot API calls, `hrobot` reads credentials from either:
+
+- `HROBOT_USERNAME` and `HROBOT_PASSWORD`
+- `HROBOT_USERNAME_FILE` and `HROBOT_PASSWORD_FILE`
+
+The `servers` subcommand lists ready/running servers by default. Use `--all` to include non-ready servers and `--json` for machine-readable output.
 
 ## Home Manager integration
 

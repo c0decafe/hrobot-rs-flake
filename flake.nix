@@ -128,19 +128,60 @@
           runtimeInputs = [
             toolchain
             pkgs.cargo-rdme
+            pkgs.curl
+            pkgs.python3
           ];
           text = ''
             set -euo pipefail
 
             usage() {
-              cat <<'EOF'
-            Usage: hrobot <command>
+              printf '%s\n' \
+                'Usage: hrobot <command>' \
+                "" \
+                'Commands:' \
+                '  update-readme    Regenerate README.md from crate documentation' \
+                '  live-api-tests   Run the live Hetzner Robot integration tests' \
+                '  servers          List ready/running servers from the Robot API' \
+                '  help             Show this help text'
+            }
 
-            Commands:
-              update-readme    Regenerate README.md from crate documentation
-              live-api-tests   Run the live Hetzner Robot integration tests
-              help             Show this help text
-            EOF
+            load_secret() {
+              local value_var="$1"
+              local file_var="$2"
+              local value="''${!value_var:-}"
+              local file_path="''${!file_var:-}"
+
+              if [ -n "$value" ]; then
+                printf '%s' "$value"
+                return 0
+              fi
+
+              if [ -n "$file_path" ]; then
+                if [ ! -f "$file_path" ]; then
+                  echo "$file_var points to a missing file: $file_path" >&2
+                  exit 1
+                fi
+                local file_value
+                file_value="$(<"$file_path")"
+                if [ -z "$file_value" ]; then
+                  echo "$file_var points to an empty file: $file_path" >&2
+                  exit 1
+                fi
+                printf '%s' "$file_value"
+                return 0
+              fi
+
+              return 1
+            }
+
+            require_robot_auth() {
+              ROBOT_USERNAME="$(load_secret HROBOT_USERNAME HROBOT_USERNAME_FILE || true)"
+              ROBOT_PASSWORD="$(load_secret HROBOT_PASSWORD HROBOT_PASSWORD_FILE || true)"
+
+              if [ -z "$ROBOT_USERNAME" ] || [ -z "$ROBOT_PASSWORD" ]; then
+                echo "Set HROBOT_USERNAME/HROBOT_PASSWORD or HROBOT_USERNAME_FILE/HROBOT_PASSWORD_FILE." >&2
+                exit 1
+              fi
             }
 
             command="''${1:-help}"
@@ -166,6 +207,96 @@
                 : "''${HROBOT_USERNAME:?set HROBOT_USERNAME to run the live Robot API tests}"
                 : "''${HROBOT_PASSWORD:?set HROBOT_PASSWORD to run the live Robot API tests}"
                 exec cargo test --tests -- --test-threads=1
+                ;;
+              servers|list-running-servers)
+                show_all=0
+                as_json=0
+                while [ "$#" -gt 0 ]; do
+                  case "$1" in
+                    --all)
+                      show_all=1
+                      ;;
+                    --json)
+                      as_json=1
+                      ;;
+                    -h|--help)
+                      printf '%s\n' \
+                        'Usage: hrobot servers [--all] [--json]' \
+                        "" \
+                        'By default this lists ready/running servers only.' \
+                        "" \
+                        'Options:' \
+                        '  --all   Include non-ready servers too' \
+                        '  --json  Emit JSON instead of a table'
+                      exit 0
+                      ;;
+                    *)
+                      echo "Unknown option for servers: $1" >&2
+                      exit 1
+                      ;;
+                  esac
+                  shift
+                done
+
+                require_robot_auth
+
+                curl --fail --silent --show-error \
+                  --user "$ROBOT_USERNAME:$ROBOT_PASSWORD" \
+                  "https://robot-ws.your-server.de/server" \
+                  | python3 -c '
+import json
+import sys
+
+show_all = sys.argv[1] == "1"
+as_json = sys.argv[2] == "1"
+
+payload = json.load(sys.stdin)
+servers = [item["server"] for item in payload]
+
+if not show_all:
+    servers = [
+        server
+        for server in servers
+        if server.get("status") == "ready" and not server.get("cancelled", False)
+    ]
+
+servers.sort(key=lambda server: (server.get("server_name", ""), server.get("server_number", 0)))
+
+if as_json:
+    json.dump(servers, sys.stdout, indent=2)
+    sys.stdout.write("\\n")
+    raise SystemExit(0)
+
+if not servers:
+    print("No matching servers found.")
+    raise SystemExit(0)
+
+headers = ("id", "name", "status", "product", "dc", "ipv4")
+rows = [
+    (
+        str(server.get("server_number", "")),
+        server.get("server_name", ""),
+        server.get("status", ""),
+        server.get("product", ""),
+        server.get("dc", ""),
+        server.get("server_ip", "") or "",
+    )
+    for server in servers
+]
+
+widths = [
+    max(len(header), *(len(row[idx]) for row in rows))
+    for idx, header in enumerate(headers)
+]
+
+def emit(row):
+    print("  ".join(value.ljust(widths[idx]) for idx, value in enumerate(row)))
+
+emit(headers)
+emit(tuple("-" * width for width in widths))
+for row in rows:
+    emit(row)
+' "$show_all" "$as_json"
                 ;;
               help|-h|--help)
                 usage
