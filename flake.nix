@@ -181,8 +181,9 @@
       in
       {
         packages = {
-          default = package;
+          default = hrobotHelper;
           ${pname} = package;
+          hrobot-crate = package;
           hrobot-helper = hrobotHelper;
         };
 

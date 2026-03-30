@@ -6,16 +6,19 @@ This repository is intentionally **not** a fork of the upstream source tree. Ins
 
 ## What this flake provides
 
-- `packages.default` / `packages.hrobot`: build the upstream `hrobot` crate
-- `packages.hrobot-helper`: installs the `hrobot` helper CLI
+- `packages.default` / `packages.hrobot-helper`: install the `hrobot` helper CLI
+- `packages.hrobot` / `packages.hrobot-crate`: build the pinned upstream `hrobot` crate
 - `devShells.default`: Rust toolchain, `cargo-rdme`, `cargo-llvm-cov`, `taplo`, `rust-analyzer`, and `nixfmt`
 - `checks`: package build, fmt, Taplo, Clippy, docs, and `cargo test --lib`
 
 ## Usage
 
 ```bash
-# Build the pinned upstream crate
-nix build github:c0decafe/hrobot-rs-flake
+# Install the helper CLI into your user profile
+nix profile install github:c0decafe/hrobot-rs-flake
+
+# Build the pinned upstream crate explicitly
+nix build github:c0decafe/hrobot-rs-flake#hrobot
 
 # Run the helper CLI
 nix run github:c0decafe/hrobot-rs-flake -- help
