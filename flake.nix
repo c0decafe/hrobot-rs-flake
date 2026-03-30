@@ -123,30 +123,59 @@
           fi
         '';
 
-        updateReadme = pkgs.writeShellApplication {
-          name = "hrobot-rs-update-readme";
+        hrobotHelper = pkgs.writeShellApplication {
+          name = "hrobot";
           runtimeInputs = [
             toolchain
             pkgs.cargo-rdme
           ];
           text = ''
             set -euo pipefail
-            ${checkoutPrelude}
-            exec cargo rdme > README.md
-          '';
-        };
 
-        liveApiTests = pkgs.writeShellApplication {
-          name = "hrobot-rs-live-api-tests";
-          runtimeInputs = [
-            toolchain
-          ];
-          text = ''
-            set -euo pipefail
-            ${checkoutPrelude}
-            : "''${HROBOT_USERNAME:?set HROBOT_USERNAME to run the live Robot API tests}"
-            : "''${HROBOT_PASSWORD:?set HROBOT_PASSWORD to run the live Robot API tests}"
-            exec cargo test --tests -- --test-threads=1
+            usage() {
+              cat <<'EOF'
+            Usage: hrobot <command>
+
+            Commands:
+              update-readme    Regenerate README.md from crate documentation
+              live-api-tests   Run the live Hetzner Robot integration tests
+              help             Show this help text
+            EOF
+            }
+
+            command="''${1:-help}"
+            shift || true
+
+            case "$command" in
+              update-readme)
+                if [ "$#" -ne 0 ]; then
+                  echo "update-readme does not accept extra arguments." >&2
+                  usage >&2
+                  exit 1
+                fi
+                ${checkoutPrelude}
+                exec cargo rdme > README.md
+                ;;
+              live-api-tests)
+                if [ "$#" -ne 0 ]; then
+                  echo "live-api-tests does not accept extra arguments." >&2
+                  usage >&2
+                  exit 1
+                fi
+                ${checkoutPrelude}
+                : "''${HROBOT_USERNAME:?set HROBOT_USERNAME to run the live Robot API tests}"
+                : "''${HROBOT_PASSWORD:?set HROBOT_PASSWORD to run the live Robot API tests}"
+                exec cargo test --tests -- --test-threads=1
+                ;;
+              help|-h|--help)
+                usage
+                ;;
+              *)
+                echo "Unknown command: $command" >&2
+                usage >&2
+                exit 1
+                ;;
+            esac
           '';
         };
       in
@@ -154,22 +183,21 @@
         packages = {
           default = package;
           ${pname} = package;
-          hrobot-rs-update-readme = updateReadme;
-          hrobot-rs-live-api-tests = liveApiTests;
+          hrobot-helper = hrobotHelper;
         };
 
         inherit checks;
 
         apps = {
-          update-readme = {
+          default = {
             type = "app";
-            program = "${updateReadme}/bin/hrobot-rs-update-readme";
-            meta.description = "Regenerate README.md from crate documentation in an hrobot-rs checkout";
+            program = "${hrobotHelper}/bin/hrobot";
+            meta.description = "Helper CLI for working with an hrobot-rs checkout";
           };
-          live-api-tests = {
+          hrobot = {
             type = "app";
-            program = "${liveApiTests}/bin/hrobot-rs-live-api-tests";
-            meta.description = "Run the live Hetzner Robot integration tests from an hrobot-rs checkout";
+            program = "${hrobotHelper}/bin/hrobot";
+            meta.description = "Helper CLI for working with an hrobot-rs checkout";
           };
         };
 

@@ -7,8 +7,7 @@ This repository is intentionally **not** a fork of the upstream source tree. Ins
 ## What this flake provides
 
 - `packages.default` / `packages.hrobot`: build the upstream `hrobot` crate
-- `packages.hrobot-rs-update-readme`: safe helper for `cargo rdme`
-- `packages.hrobot-rs-live-api-tests`: helper for the live Robot API integration tests
+- `packages.hrobot-helper`: installs the `hrobot` helper CLI
 - `devShells.default`: Rust toolchain, `cargo-rdme`, `cargo-llvm-cov`, `taplo`, `rust-analyzer`, and `nixfmt`
 - `checks`: package build, fmt, Taplo, Clippy, docs, and `cargo test --lib`
 
@@ -17,6 +16,9 @@ This repository is intentionally **not** a fork of the upstream source tree. Ins
 ```bash
 # Build the pinned upstream crate
 nix build github:c0decafe/hrobot-rs-flake
+
+# Run the helper CLI
+nix run github:c0decafe/hrobot-rs-flake -- help
 
 # Enter the development shell
 nix develop github:c0decafe/hrobot-rs-flake
@@ -34,13 +36,13 @@ git clone https://github.com/MathiasPius/hrobot-rs.git ~/src/hrobot-rs
 
 # Regenerate README.md from crate docs
 HROBOT_RS_DIR=~/src/hrobot-rs \
-  nix run github:c0decafe/hrobot-rs-flake#update-readme
+  nix run github:c0decafe/hrobot-rs-flake#hrobot -- update-readme
 
 # Run the live API tests (requires credentials)
 export HROBOT_USERNAME='#ws+...'
 export HROBOT_PASSWORD='...'
 HROBOT_RS_DIR=~/src/hrobot-rs \
-  nix run github:c0decafe/hrobot-rs-flake#live-api-tests
+  nix run github:c0decafe/hrobot-rs-flake#hrobot -- live-api-tests
 ```
 
 ## Home Manager integration
@@ -50,8 +52,7 @@ HROBOT_RS_DIR=~/src/hrobot-rs \
   inputs.hrobot-rs-flake.url = "github:c0decafe/hrobot-rs-flake";
 
   home.packages = [
-    inputs.hrobot-rs-flake.packages.${pkgs.system}.hrobot-rs-update-readme
-    inputs.hrobot-rs-flake.packages.${pkgs.system}.hrobot-rs-live-api-tests
+    inputs.hrobot-rs-flake.packages.${pkgs.system}.hrobot-helper
   ];
 }
 ```
