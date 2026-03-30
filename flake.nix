@@ -112,6 +112,17 @@
           taplo = taploCheck;
         };
 
+        checkoutPrelude = ''
+          if [ -n "''${HROBOT_RS_DIR:-}" ]; then
+            cd "$HROBOT_RS_DIR"
+          fi
+
+          if [ ! -f Cargo.toml ] || [ ! -f README.md ]; then
+            echo "Run this command from an hrobot-rs checkout or set HROBOT_RS_DIR=/path/to/hrobot-rs." >&2
+            exit 1
+          fi
+        '';
+
         updateReadme = pkgs.writeShellApplication {
           name = "hrobot-rs-update-readme";
           runtimeInputs = [
@@ -120,6 +131,7 @@
           ];
           text = ''
             set -euo pipefail
+            ${checkoutPrelude}
             exec cargo rdme > README.md
           '';
         };
@@ -131,6 +143,7 @@
           ];
           text = ''
             set -euo pipefail
+            ${checkoutPrelude}
             : "''${HROBOT_USERNAME:?set HROBOT_USERNAME to run the live Robot API tests}"
             : "''${HROBOT_PASSWORD:?set HROBOT_PASSWORD to run the live Robot API tests}"
             exec cargo test --tests -- --test-threads=1

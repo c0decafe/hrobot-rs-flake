@@ -27,18 +27,33 @@ nix flake check github:c0decafe/hrobot-rs-flake
 
 ## Working in an upstream checkout
 
-The helper commands are meant to be run from a checkout of the original repository.
+The helper commands are meant to be run from a checkout of the original repository. You can either `cd` into a checkout first, or set `HROBOT_RS_DIR` and run them from anywhere.
 
 ```bash
-cd ~/workspaces/hrobot-rs
+git clone https://github.com/MathiasPius/hrobot-rs.git ~/src/hrobot-rs
 
 # Regenerate README.md from crate docs
-nix run github:c0decafe/hrobot-rs-flake#update-readme
+HROBOT_RS_DIR=~/src/hrobot-rs \
+  nix run github:c0decafe/hrobot-rs-flake#update-readme
 
 # Run the live API tests (requires credentials)
 export HROBOT_USERNAME='#ws+...'
 export HROBOT_PASSWORD='...'
-nix run github:c0decafe/hrobot-rs-flake#live-api-tests
+HROBOT_RS_DIR=~/src/hrobot-rs \
+  nix run github:c0decafe/hrobot-rs-flake#live-api-tests
+```
+
+## Home Manager integration
+
+```nix
+{
+  inputs.hrobot-rs-flake.url = "github:c0decafe/hrobot-rs-flake";
+
+  home.packages = [
+    inputs.hrobot-rs-flake.packages.${pkgs.system}.hrobot-rs-update-readme
+    inputs.hrobot-rs-flake.packages.${pkgs.system}.hrobot-rs-live-api-tests
+  ];
+}
 ```
 
 ## Maintenance
