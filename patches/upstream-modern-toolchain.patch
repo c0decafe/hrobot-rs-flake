@@ -1,0 +1,117 @@
+diff --git a/Cargo.toml b/Cargo.toml
+index 2563633..8c4ce23 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -15,9 +15,9 @@ thiserror = "2.0.11"
+ 
+ ipnet = { version = "2.8.0", features = ["serde"] }
+ time = { version = "0.3.23", features = [
+-    "serde-human-readable",
+-    "macros",
+-    "parsing",
++  "serde-human-readable",
++  "macros",
++  "parsing",
+ ] }
+ time-tz = { version = "2.0.0" }
+ bytesize = { version = "2.2.0", features = ["serde"] }
+@@ -32,14 +32,14 @@ urlencoding = "2"
+ 
+ hyper = { version = "1.2.0", features = ["http1", "client"] }
+ hyper-rustls = { version = "0.27.0", default-features = false, features = [
+-    "http1",
+-    "webpki-tokio",
+-    "ring",
++  "http1",
++  "webpki-tokio",
++  "ring",
+ ] }
+ hyper-util = { version = "0.1.3", features = [
+-    "client",
+-    "client-legacy",
+-    "http1",
++  "client",
++  "client-legacy",
++  "http1",
+ ] }
+ http-body-util = "0.1.0"
+ 
+diff --git a/src/api/ordering/models.rs b/src/api/ordering/models.rs
+index c86e0b0..6bfec99 100644
+--- a/src/api/ordering/models.rs
++++ b/src/api/ordering/models.rs
+@@ -1463,7 +1463,7 @@ mod tests {
+             }
+           ]"#;
+ 
+-        let data: List<AvailableAddon> = serde_json::from_str(&example_data).unwrap();
++        let data: List<AvailableAddon> = serde_json::from_str(example_data).unwrap();
+ 
+         info!("{data:#?}");
+     }
+diff --git a/src/client.rs b/src/client.rs
+index d742da0..d43e83b 100644
+--- a/src/client.rs
++++ b/src/client.rs
+@@ -31,7 +31,7 @@ mod r#async {
+     /// # }
+     /// ```
+     ///
+-    /// If you want to customize the [`hyper::Client`] see:
++    /// If you want to customize the [`hyper_util::client::legacy::Client`] see:
+     /// * [`AsyncRobot::from_env`] if you still want to use the environment variables, or
+     /// * [`AsyncRobot::new`] if you want to provide client and credentials yourself.
+     ///
+diff --git a/src/lib.rs b/src/lib.rs
+index 9ca603d..81ee866 100644
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -18,7 +18,7 @@
+ //! #[tokio::main]
+ //! async fn main() {
+ //!     // Robot is instantiated using the environment
+-//!     // variables HROBOT_USERNAME an HROBOT_PASSWORD.
++//!     // variables HROBOT_USERNAME and HROBOT_PASSWORD.
+ //!     let robot = AsyncRobot::default();
+ //!
+ //!     for server in robot.list_servers().await.unwrap() {
+diff --git a/tests/aaa_setup.rs b/tests/aaa_setup.rs
+index ea643ea..9e4546c 100644
+--- a/tests/aaa_setup.rs
++++ b/tests/aaa_setup.rs
+@@ -48,9 +48,7 @@ async fn provision_cheapest_server() {
+ 
+     info!("{result:#?}");
+ 
+-    let id = result
+-        .server_id
+-        .unwrap_or_else(|| ServerId(result.product.id.0));
++    let id = result.server_id.unwrap_or(ServerId(result.product.id.0));
+ 
+     std::fs::write(common::PROVISIONED_SERVER_ID_PATH, id.to_string()).unwrap();
+ }
+diff --git a/tests/common/mod.rs b/tests/common/mod.rs
+index 031d427..0135635 100644
+--- a/tests/common/mod.rs
++++ b/tests/common/mod.rs
+@@ -22,7 +22,7 @@ pub async fn provisioned_server_id() -> ServerId {
+ 
+     for i in 0..60 {
+         if let Ok(contents) = std::fs::read_to_string(PROVISIONED_SERVER_ID_PATH) {
+-            let server_id = ServerId(u32::from_str_radix(&contents, 10).unwrap());
++            let server_id = ServerId(contents.parse::<u32>().unwrap());
+ 
+             if let Ok(server) = robot.get_server(server_id).await {
+                 if server.status == server::Status::Ready {
+diff --git a/tests/subnet.rs b/tests/subnet.rs
+index ede33f1..174ac0f 100644
+--- a/tests/subnet.rs
++++ b/tests/subnet.rs
+@@ -48,7 +48,6 @@ async fn get_subnet_cancellation() {
+ 
+     let subnet = subnets
+         .values()
+-        .into_iter()
+         .filter_map(|subnet| subnet.first())
+         .find_map(|subnet| match subnet.ip.addr() {
+             IpAddr::V4(addr) => Some(addr),
